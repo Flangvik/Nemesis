@@ -273,6 +273,8 @@ const FileViewer = () => {
   const isFromFile = location.state?.from === 'file';
   const isFromFindings = location.state?.from === 'findings';
   const previousFileId = location.state?.previousFileId;
+  const filesList = location.state?.filesList || [];
+  const currentFileIndex = location.state?.currentFileIndex !== undefined ? location.state.currentFileIndex : -1;
 
   const [detectedEncoding, setDetectedEncoding] = useState('utf-8');
 
@@ -498,7 +500,7 @@ const FileViewer = () => {
     if (isFromFile && previousFileId) {
       navigate('/files', {
         state: {
-          maintainSelectedIndex: selectedIndex,
+          maintainSelectedIndex: currentFileIndex >= 0 ? currentFileIndex : undefined,
           filters: location.state?.filters
         }
       });
@@ -523,6 +525,38 @@ const FileViewer = () => {
         }
       });
     }
+  };
+
+  // Navigate to previous/next file
+  const navigateToAdjacentFile = (direction) => {
+    if (filesList.length === 0 || currentFileIndex === -1) return;
+
+    let targetIndex;
+    if (direction === 'next') {
+      targetIndex = currentFileIndex + 1;
+      if (targetIndex >= filesList.length) return; // Already at last file
+    } else {
+      targetIndex = currentFileIndex - 1;
+      if (targetIndex < 0) {
+        // No previous file, go back to file list
+        handleBackClick();
+        return;
+      }
+    }
+
+    const targetFile = filesList[targetIndex];
+    if (!targetFile) return;
+
+    const currentSearch = new URLSearchParams(location.search).toString();
+    navigate(`/files/${targetFile.object_id}${currentSearch ? `?${currentSearch}` : ''}`, {
+      state: {
+        from: 'file',
+        previousFileId: targetFile.object_id,
+        filesList: filesList,
+        currentFileIndex: targetIndex,
+        filters: location.state?.filters
+      }
+    });
   };
 
   const displayableImageTypes = {
@@ -754,19 +788,6 @@ const FileViewer = () => {
       // If no other conditions met, it will stay as 'hex'
     }
   }, [fileData, pdfContent, hasPreviewableContent, fileContent]);
-
-  // left arrow to go back
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        e.preventDefault();
-        handleBackClick();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [navigate]);
 
   useEffect(() => {
     const fetchFileData = async () => {
@@ -1039,7 +1060,10 @@ const FileViewer = () => {
           });
         } else if (e.key === 'ArrowLeft' && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
-          handleBackClick();
+          navigateToAdjacentFile('previous');
+        } else if (e.key === 'ArrowRight' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          navigateToAdjacentFile('next');
         } else if (e.key === 'p' && !e.ctrlKey && !e.metaKey && !e.altKey) {
           e.preventDefault();
           const tabs = getAvailableTabs();
@@ -1059,7 +1083,7 @@ const FileViewer = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeTab, handleBackClick]);
+  }, [activeTab, handleBackClick, filesList, currentFileIndex, navigate, location]);
 
   const handleDownload = async () => {
     // Handle the "Download" button action
@@ -1339,7 +1363,11 @@ const FileViewer = () => {
 
       <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border dark:border-gray-700 p-3">
         <p className="text-sm text-blue-600 dark:text-blue-400">
-          Use ← to return to file list, [tab] to jump to preview, 'p' to cycle previews, and 'f' to jump to findings (if present)
+          {filesList.length > 0 ? (
+            <>Use ← → to navigate between files, [tab] to jump to preview, 'p' to cycle previews, and 'f' to jump to findings (if present)</>
+          ) : (
+            <>Use ← to return to file list, [tab] to jump to preview, 'p' to cycle previews, and 'f' to jump to findings (if present)</>
+          )}
         </p>
       </div>
 

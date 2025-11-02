@@ -367,7 +367,22 @@ const FileList = () => {
     } else if (!e.target.closest('button')) {
       // Get current search params to preserve them
       const currentSearch = searchParams.toString();
-      navigate(`/files/${file.object_id}${currentSearch ? `?${currentSearch}` : ''}`);
+      navigate(`/files/${file.object_id}${currentSearch ? `?${currentSearch}` : ''}`, {
+        state: {
+          from: 'file',
+          previousFileId: file.object_id,
+          filesList: files,
+          currentFileIndex: actualIndex,
+          filters: {
+            search: searchQuery,
+            agentId: selectedAgentId,
+            tags: selectedTags,
+            viewState: viewStateFilter,
+            sortBy: sortBy,
+            sortDirection: sortDirection
+          }
+        }
+      });
     }
   };
 
@@ -750,7 +765,24 @@ const FileList = () => {
         case 'ArrowRight':
           e.preventDefault();
           if (selectedIndex >= 0 && currentPageSelectedIndex >= 0 && currentPageSelectedIndex < filesLength) {
-            navigate(`/files/${files[currentPageSelectedIndex].object_id}`);
+            const file = files[currentPageSelectedIndex];
+            const currentSearch = searchParams.toString();
+            navigate(`/files/${file.object_id}${currentSearch ? `?${currentSearch}` : ''}`, {
+              state: {
+                from: 'file',
+                previousFileId: file.object_id,
+                filesList: files,
+                currentFileIndex: currentPageSelectedIndex,
+                filters: {
+                  search: searchQuery,
+                  agentId: selectedAgentId,
+                  tags: selectedTags,
+                  viewState: viewStateFilter,
+                  sortBy: sortBy,
+                  sortDirection: sortDirection
+                }
+              }
+            });
           }
           break;
         case 'v':
